@@ -1,0 +1,279 @@
+generator client {
+  provider        = "prisma-client-js"
+  previewFeatures = ["postgresqlExtensions"]
+}
+
+datasource db {
+  provider   = "postgresql"
+  url        = env("DATABASE_URL")
+  directUrl  = env("DIRECT_URL")
+  extensions = [pgvector(map: "vector"), uuidOssp(map: "uuid-ossp")]
+}
+
+// ─── Enums ──────────────────────────────────────────────────────────────────
+
+enum Role {
+  OWNER
+  ADMIN
+  MEMBER
+  VIEWER
+}
+
+enum PrdStatus {
+  DRAFT
+  IN_REVIEW
+  APPROVED
+  ARCHIVED
+}
+
+enum Priority {
+  CRITICAL
+  HIGH
+  MEDIUM
+  LOW
+}
+
+enum TicketType {
+  EPIC
+  STORY
+  TASK
+  BUG
+}
+
+enum DataSourceProvider {
+  ZENDESK
+  MIXPANEL
+  JIRA
+  INTERCOM
+  HUBSPOT
+  CSV_UPLOAD
+  MANUAL
+}
+
+enum AgentRunStatus {
+  QUEUED
+  RUNNING
+  COMPLETED
+  FAILED
+}
+
+// ─── Organization (Tenant Root) ─────────────────────────────────────────────
+
+model Organization {
+  id         String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name       String
+  slug       String    @unique
+  logo_url   String?
+  stripe_customer_id String? @unique
+  workos_org_id      String? @unique
+  created_at DateTime  @default(now())
+  updated_at DateTime  @updatedAt
+  deleted_at DateTime?
+
+  users           User[]
+  data_sources    DataSource[]
+  interviews      Interview[]
+  insight_clusters InsightCluster[]
+  feature_prds    FeaturePrd[]
+  jira_tickets    JiraTicket[]
+  agent_runs      AgentRun[]
+
+  @@map("organizations")
+}
+
+// ─── User ───────────────────────────────────────────────────────────────────
+
+model User {
+  id              String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organization_id String    @db.Uuid
+  auth_id         String    @unique /// Supabase Auth uid
+  email           String
+  full_name       String?
+  avatar_url      String?
+  role            Role      @default(MEMBER)
+  created_at      DateTime  @default(now())
+  updated_at      DateTime  @updatedAt
+  deleted_at      DateTime?
+
+  organization Organization @relation(fields: [organization_id], references: [id])
+  agent_runs   AgentRun[]
+
+  @@unique([organization_id, email])
+  @@index([organization_id])
+  @@map("users")
+}
+
+// ─── Data Source (Airbyte connections) ───────────────────────────────────────
+
+model DataSource {
+  id              String             @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organization_id String             @db.Uuid
+  provider        DataSourceProvider
+  label           String             /// Human-readable name, e.g. "Production Zendesk"
+  connection_meta Json               @default("{}") /// Airbyte connection config (no secrets)
+  last_synced_at  DateTime?
+  created_at      DateTime           @default(now())
+  updated_at      DateTime           @updatedAt
+  deleted_at      DateTime?
+
+  organization Organization @relation(fields: [organization_id], references: [id])
+  interviews   Interview[]
+
+  @@index([organization_id])
+  @@map("data_sources")
+}
+
+// ─── Interview (Raw customer signal) ────────────────────────────────────────
+
+model Interview {
+  id              String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organization_id String    @db.Uuid
+  data_source_id  String?   @db.Uuid
+  source_ref      String?   /// External ID in source system
+  contact_name    String?   /// PII — scrubbed before LLM calls
+  transcript      String    @db.Text
+  summary         String?   @db.Text
+  sentiment       String?   /// positive | neutral | negative
+  language        String    @default("en") @db.VarChar(5)
+  embedding       Unsupported("vector(1024)")?
+  created_at      DateTime  @default(now())
+  updated_at      DateTime  @updatedAt
+  deleted_at      DateTime?
+
+  organization     Organization       @relation(fields: [organization_id], references: [id])
+  data_source      DataSource?        @relation(fields: [data_source_id], references: [id])
+  insight_clusters InsightInterviewJoin[]
+
+  @@index([organization_id])
+  @@index([data_source_id])
+  @@map("interviews")
+}
+
+// ─── Insight Cluster (AI-synthesized signal group) ──────────────────────────
+
+model InsightCluster {
+  id              String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organization_id String   @db.Uuid
+  title           String
+  description     String   @db.Text
+  signal_count    Int      @default(0)
+  embedding       Unsupported("vector(1024)")?
+  created_at      DateTime @default(now())
+  updated_at      DateTime @updatedAt
+  deleted_at      DateTime?
+
+  organization Organization           @relation(fields: [organization_id], references: [id])
+  interviews   InsightInterviewJoin[]
+  feature_prds FeaturePrd[]
+
+  @@index([organization_id])
+  @@map("insight_clusters")
+}
+
+model InsightInterviewJoin {
+  interview_id       String @db.Uuid
+  insight_cluster_id String @db.Uuid
+  relevance_score    Float  @default(1.0)
+
+  interview      Interview      @relation(fields: [interview_id], references: [id])
+  insight_cluster InsightCluster @relation(fields: [insight_cluster_id], references: [id])
+
+  @@id([interview_id, insight_cluster_id])
+  @@map("insight_interview_join")
+}
+
+// ─── Feature PRD ────────────────────────────────────────────────────────────
+
+model FeaturePrd {
+  id                 String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organization_id    String    @db.Uuid
+  insight_cluster_id String?   @db.Uuid
+  agent_run_id       String?   @db.Uuid
+  title              String
+  rationale          String    @db.Text
+  status             PrdStatus @default(DRAFT)
+  priority           Priority  @default(MEDIUM)
+  target_persona     String?
+  success_metrics    Json      @default("[]") /// KPI definitions
+  created_at         DateTime  @default(now())
+  updated_at         DateTime  @updatedAt
+  deleted_at         DateTime?
+
+  organization    Organization    @relation(fields: [organization_id], references: [id])
+  insight_cluster InsightCluster? @relation(fields: [insight_cluster_id], references: [id])
+  agent_run       AgentRun?       @relation(fields: [agent_run_id], references: [id])
+  ui_specs        UiSpec[]
+  jira_tickets    JiraTicket[]
+
+  @@index([organization_id])
+  @@index([status])
+  @@map("feature_prds")
+}
+
+// ─── UI Spec ────────────────────────────────────────────────────────────────
+
+model UiSpec {
+  id             String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  feature_prd_id String   @db.Uuid
+  component_name String
+  description    String   @db.Text
+  props_schema   Json     @default("{}") /// JSON Schema of component props
+  layout_hint    String?  /// e.g. "sidebar", "modal", "full-page"
+  sort_order     Int      @default(0)
+  created_at     DateTime @default(now())
+  updated_at     DateTime @updatedAt
+
+  feature_prd FeaturePrd @relation(fields: [feature_prd_id], references: [id], onDelete: Cascade)
+
+  @@index([feature_prd_id])
+  @@map("ui_specs")
+}
+
+// ─── Jira Ticket ────────────────────────────────────────────────────────────
+
+model JiraTicket {
+  id              String     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organization_id String     @db.Uuid
+  feature_prd_id  String     @db.Uuid
+  type            TicketType @default(STORY)
+  title           String
+  description     String     @db.Text
+  acceptance_criteria Json   @default("[]") /// string[]
+  story_points    Int?
+  external_ref    String?    /// Jira issue key once synced, e.g. "PROD-123"
+  created_at      DateTime   @default(now())
+  updated_at      DateTime   @updatedAt
+  deleted_at      DateTime?
+
+  organization Organization @relation(fields: [organization_id], references: [id])
+  feature_prd  FeaturePrd   @relation(fields: [feature_prd_id], references: [id], onDelete: Cascade)
+
+  @@index([organization_id])
+  @@index([feature_prd_id])
+  @@map("jira_tickets")
+}
+
+// ─── Agent Run (LangGraph audit trail) ──────────────────────────────────────
+
+model AgentRun {
+  id              String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organization_id String         @db.Uuid
+  triggered_by_id String         @db.Uuid
+  status          AgentRunStatus @default(QUEUED)
+  graph_name      String         /// LangGraph graph identifier
+  input_payload   Json           @default("{}")
+  output_payload  Json?          /// Full handoff JSON on completion
+  token_usage     Int            @default(0)
+  error_message   String?        @db.Text
+  started_at      DateTime?
+  completed_at    DateTime?
+  created_at      DateTime       @default(now())
+
+  organization Organization @relation(fields: [organization_id], references: [id])
+  triggered_by User         @relation(fields: [triggered_by_id], references: [id])
+  feature_prds FeaturePrd[]
+
+  @@index([organization_id])
+  @@index([status])
+  @@map("agent_runs")
+}

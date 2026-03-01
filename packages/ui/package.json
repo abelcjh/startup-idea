@@ -1,0 +1,20 @@
+{
+  "name": "@product-os/ui",
+  "version": "0.0.0",
+  "private": true,
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "scripts": {
+    "lint": "eslint src/"
+  },
+  "dependencies": {
+    "class-variance-authority": "^0.7.1",
+    "clsx": "^2.1.1",
+    "tailwind-merge": "^2.6.0"
+  },
+  "devDependencies": {
+    "@product-os/config-ts": "workspace:*",
+    "react": "^19.0.0",
+    "typescript": "^5.7.3"
+  }
+}

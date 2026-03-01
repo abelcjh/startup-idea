@@ -1,0 +1,11 @@
+{
+  "name": "@product-os/api",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "uvicorn app.main:app --reload --host 0.0.0.0 --port 8000",
+    "dev:worker": "arq app.worker.WorkerSettings",
+    "lint": "ruff check app/",
+    "test": "pytest --cov=app tests/"
+  }
+}

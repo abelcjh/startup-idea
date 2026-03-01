@@ -1,0 +1,10 @@
+{
+  "name": "@product-os/config-eslint",
+  "version": "0.0.0",
+  "private": true,
+  "files": ["index.js"],
+  "devDependencies": {
+    "eslint-config-next": "^15.1.4",
+    "eslint-config-prettier": "^9.1.0"
+  }
+}
