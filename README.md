@@ -1,208 +1,29 @@
-# ProductOS
+# 🦄 ProductOS
 
-AI-native enterprise product discovery platform. Ingest customer interviews, synthesize insights via LangGraph agents, and output structured PRDs with Jira tickets ? all exposed to coding agents via MCP.
+**The "Cursor for Product Management."** An AI-native, enterprise-grade product discovery platform that automates the loop from customer feedback to technical Jira implementation.
 
-## Architecture
+## 🏗️ Architecture
 
-| Layer | Stack | Purpose |
+ProductOS is a full-stack monorepo managed by Turborepo, designed for strict SOC2 compliance, multi-tenancy, and autonomous AI orchestration.
+
+| Layer | Technologies Used | Purpose |
 |---|---|---|
-| Frontend | Next.js 15, Tailwind, Aceternity UI, Zustand | Dashboard + PRD viewer |
-| API | FastAPI, Pydantic v2 | Typed async backend |
-| AI | LangGraph, Mistral, LlamaIndex, Presidio | Multi-agent PRD generation + PII scrubbing |
-| Data | Supabase (PostgreSQL + pgvector), Prisma, SQLModel | Tenant-isolated storage + embeddings |
-| Async | Arq + Redis | Background agent job queue |
-| Agent Handoff | Anthropic MCP SDK (SSE) | Expose PRDs to IDEs (Cursor/Claude) |
-| IaC | Terraform, GCP Cloud Run | Production deployment |
-
-## Prerequisites
-
-- **Node.js** 20+ and **pnpm** 9+
-- **Python** 3.11+ with **uv** (`pip install uv`)
-
-## Quick Start (No Docker)
-
-This is the fastest path to a running project ? uses **Supabase Cloud** (free) instead of Docker.
-
-### 1. Create a Supabase project
-
-1. Go to [supabase.com](https://supabase.com) and create a free project
-2. Once the project is ready, go to **SQL Editor** and run:
-   ```sql
-   CREATE EXTENSION IF NOT EXISTS vector;
-   CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
-   ```
-3. Gather these values from your dashboard:
-   - **Settings ? API** ? Project URL, `anon` key, `service_role` key
-   - **Settings ? Database ? Connection string** ? URI (Session mode) ? `DATABASE_URL`
-   - **Settings ? Database ? Connection string** ? URI (Direct) ? `DIRECT_URL`
-
-### 2. Clone and install
-
-```bash
-git clone <repo-url> && cd startup-idea
-pnpm install
-cd apps/api && uv pip install --system ".[dev]" && cd ../..
-```
-
-### 3. Configure environment
-
-```bash
-cp .env.example .env.local
-```
-
-Edit `.env.local` and fill in your Supabase values:
-
-```
-SUPABASE_URL=https://xxxxx.supabase.co
-SUPABASE_ANON_KEY=eyJ...
-SUPABASE_SERVICE_ROLE_KEY=eyJ...
-DATABASE_URL=postgresql://postgres.xxxxx:PASSWORD@aws-0-us-east-1.pooler.supabase.com:6543/postgres
-DIRECT_URL=postgresql://postgres.xxxxx:PASSWORD@aws-0-us-east-1.pooler.supabase.com:5432/postgres
-```
-
-Leave `REDIS_URL` empty ? Redis is optional and only needed for async agent job queues.
-
-### 4. Push schema, generate client, seed data
-
-```bash
-pnpm db:push          # Push Prisma schema to Supabase
-pnpm db:generate      # Generate Prisma client
-pnpm db:seed          # Seed demo data (5 interviews, 2 PRDs, 6 Jira tickets)
-```
-
-Or run all setup in one shot:
-
-```bash
-pnpm setup            # install + db:push + db:generate + db:seed
-```
-
-### 5. Start development
-
-```bash
-pnpm dev              # Boots Next.js (:3000) + FastAPI (:8000)
-```
-
-### 6. Verify
-
-| Service | URL | Should show |
-|---|---|---|
-| Frontend | http://localhost:3000 | Dashboard with seeded PRD cards |
-| API docs | http://localhost:8000/docs | Swagger UI |
-| Health | http://localhost:8000/healthz | `{"status": "ok"}` |
-| MCP SSE | http://localhost:8000/mcp/sse | SSE stream (for coding agents) |
-| Supabase Studio | Your Supabase dashboard | DB browser |
+| **Frontend** | Next.js 15, Tailwind, Aceternity UI, Zustand | Awe-inspiring dashboard and PRD viewer |
+| **API Gateway** | FastAPI, Python 3.12+, Pydantic v2 | High-performance, strictly typed backend |
+| **AI Brain** | LangGraph, LlamaIndex, Mistral | Multi-agent reasoning and RAG pipeline |
+| **Data/State** | Supabase (PostgreSQL + pgvector), Prisma | Zero-trust RLS tenant data and embeddings |
+| **Background** | Arq, Redis | Async queues for long-running LangGraph jobs |
+| **Security** | Microsoft Presidio, Structlog | Strict PII scrubbing and JSON audit trails |
+| **Agent Handoff**| Anthropic MCP SDK (over SSE) | Exposes PRDs directly to IDEs (Cursor/Claude) |
 
 ---
 
-## Quick Start (With Docker)
+## 🚀 Day 1 Quick Start
 
-If you prefer a fully local stack with Docker:
+Ensure you have **Node.js 20+**, **Python 3.11+**, **pnpm 9+**, and **Docker** installed.
 
-### Prerequisites (Docker path)
-
-- Everything above, plus **Docker Desktop** running
-
+### 1. Environment Setup
+Copy the environment variable templates for both the app and the infrastructure:
 ```bash
-git clone <repo-url> && cd startup-idea
 cp .env.example .env.local
 cp docker/.env.example docker/.env
-```
-
-Edit `.env.local` and set the Docker-local values:
-
-```
-SUPABASE_URL=http://localhost:54321
-SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6ImFub24iLCJleHAiOjE5ODM4MTI5OTZ9.CRXP1A7WOeoJeXxjNni43kdQwgnWNReilDMblYTn_I0
-SUPABASE_SERVICE_ROLE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImV4cCI6MTk4MzgxMjk5Nn0.EGIM96RAZx35lJzdJsyH-qQwv8Hdp7fsn3W0YpN81IU
-DATABASE_URL=postgresql://postgres:postgres@localhost:54322/postgres
-DIRECT_URL=postgresql://postgres:postgres@localhost:54322/postgres
-REDIS_URL=redis://localhost:6379
-LITELLM_PROXY_URL=http://localhost:4000
-```
-
-```bash
-pnpm setup:docker     # install + docker:up + db:push + db:generate + db:seed
-pnpm dev:full         # Boots Next.js + FastAPI + Arq worker (requires Redis)
-```
-
----
-
-## API Keys ? What Works Without Them
-
-Most of ProductOS works with **zero external API keys**.
-
-| Key | Required? | What breaks without it |
-|---|---|---|
-| `MISTRAL_API_KEY` | **No** | Interview ingestion stores text but skips vector embeddings. LangGraph agent runs (`POST /discovery/runs`) will fail. Dashboard, MCP, seed data, and all CRUD endpoints work fine. |
-| `REDIS_URL` | **No** | Async job queue disabled. `POST /discovery/runs` returns 503. Everything else works. |
-| `WORKOS_API_KEY` | No | Auth is stubbed for dev. Production SSO/SAML won't work. |
-| `STRIPE_SECRET_KEY` | No | Billing not wired yet. |
-| `UNKEY_ROOT_KEY` | No | API key auth not wired yet. |
-| `NEXT_PUBLIC_POSTHOG_KEY` | No | Analytics disabled. No effect on UI. |
-| `RESEND_API_KEY` | No | Email not wired yet. |
-| `SENTRY_DSN` | No | Error reporting disabled. Errors still logged to console. |
-| `LANGCHAIN_API_KEY` | No | LangSmith tracing disabled. Agents still run. |
-| `DOPPLER_TOKEN` | No | Not used locally. |
-
-**TL;DR:** To test the dashboard, API, MCP server, and seed data you need **only a Supabase database**. For the full AI pipeline add a `MISTRAL_API_KEY`. For async job queues add Redis.
-
-## Project Structure
-
-```
-??? apps/
-?   ??? web/                    # Next.js 15 frontend
-?   ?   ??? app/(dashboard)/    # Dashboard pages (App Router)
-?   ?   ??? actions/            # Server Actions (Prisma queries)
-?   ?   ??? components/         # UI components (Aceternity/Framer Motion)
-?   ?   ??? store/              # Zustand state
-?   ?   ??? prisma/             # Schema + seed
-?   ?   ??? lib/                # Utils, auth, DB client
-?   ??? api/                    # FastAPI backend
-?       ??? app/
-?           ??? agents/         # LangGraph ProductDiscoveryGraph
-?           ??? mcp/            # MCP SSE server (5 tools)
-?           ??? routers/        # discovery/, interviews/
-?           ??? services/       # pii, ingestion, agent_runs
-?           ??? models/         # SQLModel tables
-?           ??? schemas/        # Pydantic v2 models
-??? packages/                   # Shared TS configs + UI lib
-??? docker/                     # Docker Compose (Supabase, Redis, LiteLLM)
-??? terraform/                  # GCP Cloud Run IaC
-??? .github/workflows/          # CI (lint/test) + Deploy
-```
-
-## Commands Reference
-
-| Command | Description |
-|---|---|
-| `pnpm dev` | Start Next.js + FastAPI (no worker, no Redis needed) |
-| `pnpm dev:full` | Start all services including Arq worker (needs Redis) |
-| `pnpm dev:web` | Start only Next.js |
-| `pnpm dev:api` | Start only FastAPI |
-| `pnpm dev:worker` | Start only Arq worker |
-| `pnpm build` | Build all packages |
-| `pnpm lint` | Lint all workspaces |
-| `pnpm test` | Test all workspaces |
-| `pnpm db:push` | Push Prisma schema to Postgres |
-| `pnpm db:seed` | Run seed script |
-| `pnpm db:reset` | Push schema + reseed (destructive) |
-| `pnpm setup` | Install + push + generate + seed (no Docker) |
-| `pnpm setup:docker` | Install + docker:up + push + generate + seed |
-| `pnpm docker:up` | Start Docker infrastructure |
-| `pnpm docker:down` | Stop Docker infrastructure |
-
-## MCP Integration (Cursor / Claude)
-
-Add to `.cursor/mcp.json` to let coding agents query your PRDs:
-
-```json
-{
-  "mcpServers": {
-    "product-os": {
-      "url": "http://localhost:8000/mcp/sse"
-    }
-  }
-}
-```
-
-Available tools: `get_latest_prd`, `list_feature_prds`, `get_jira_tickets`, `get_ui_specs`, `get_full_feature_spec`.

@@ -3,8 +3,7 @@
   "private": true,
   "packageManager": "pnpm@9.15.4",
   "scripts": {
-    "dev": "turbo run dev",
-    "dev:full": "turbo run dev dev:worker",
+    "dev": "turbo run dev dev:worker",
     "dev:web": "turbo run dev --filter=@product-os/web",
     "dev:api": "turbo run dev --filter=@product-os/api",
     "dev:worker": "turbo run dev:worker --filter=@product-os/api",
@@ -18,8 +17,7 @@
     "db:push": "turbo run db:push --filter=@product-os/web",
     "db:seed": "turbo run db:seed --filter=@product-os/web",
     "db:reset": "pnpm db:push && pnpm db:seed",
-    "setup": "pnpm install && pnpm db:push && pnpm db:generate && pnpm db:seed",
-    "setup:docker": "pnpm install && pnpm docker:up && pnpm db:push && pnpm db:generate && pnpm db:seed"
+    "setup": "pnpm install && pnpm docker:up && pnpm db:push && pnpm db:generate && pnpm db:seed"
   },
   "devDependencies": {
     "prettier": "^3.4.2",

@@ -3,15 +3,13 @@
 from __future__ import annotations
 
 from collections.abc import AsyncIterator
-from typing import TYPE_CHECKING, Annotated, Any
+from typing import Annotated
 from urllib.parse import urlparse
 
+from arq import ArqRedis, create_pool
+from arq.connections import RedisSettings
 from fastapi import Depends, Header, HTTPException, Request, status
 from sqlmodel.ext.asyncio.session import AsyncSession
-
-if TYPE_CHECKING:
-    from arq import ArqRedis
-    from arq.connections import RedisSettings
 
 from app.config import settings
 from app.db import get_session
@@ -21,8 +19,6 @@ from app.db import get_session
 
 
 def _parse_redis_url(url: str) -> RedisSettings:
-    from arq.connections import RedisSettings
-
     parsed = urlparse(url)
     return RedisSettings(
         host=parsed.hostname or "localhost",
@@ -32,19 +28,15 @@ def _parse_redis_url(url: str) -> RedisSettings:
     )
 
 
-redis_settings: RedisSettings | None = (
-    _parse_redis_url(settings.redis_url) if settings.redis_url else None
-)
+redis_settings = _parse_redis_url(settings.redis_url)
 
 
-async def get_redis_pool(request: Request):  # noqa: ANN201
-    from arq import ArqRedis
-
+async def get_redis_pool(request: Request) -> ArqRedis:
     pool: ArqRedis | None = getattr(request.app.state, "redis_pool", None)
     if pool is None:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="Redis not available — start Redis or Docker to enable async job queue",
+            detail="Redis pool not initialized",
         )
     return pool
 
@@ -84,7 +76,7 @@ async def get_current_user_id(
 
 # ─── Annotated type aliases (import these in routers) ────────────────────────
 
-RedisPool = Annotated[Any, Depends(get_redis_pool)]
+RedisPool = Annotated[ArqRedis, Depends(get_redis_pool)]
 DbSession = Annotated[AsyncSession, Depends(get_db)]
 TenantId = Annotated[str, Depends(get_current_tenant)]
 UserId = Annotated[str, Depends(get_current_user_id)]

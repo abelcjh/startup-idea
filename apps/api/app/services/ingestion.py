@@ -15,7 +15,6 @@ import structlog
 from sqlalchemy import text
 from sqlmodel.ext.asyncio.session import AsyncSession
 
-from app.config import settings
 from app.services import pii
 
 logger = structlog.get_logger(__name__)
@@ -31,14 +30,7 @@ class IngestResult:
     embedding_dim: int
 
 
-def _has_embedding_key() -> bool:
-    return bool(settings.mistral_api_key)
-
-
-async def _generate_embedding(scrubbed_text: str) -> list[float] | None:
-    if not _has_embedding_key():
-        logger.warning("embedding.skipped", reason="MISTRAL_API_KEY not set")
-        return None
+async def _generate_embedding(scrubbed_text: str) -> list[float]:
     response = await litellm.aembedding(model=EMBED_MODEL, input=[scrubbed_text])
     vector: list[float] = response.data[0]["embedding"]
     if len(vector) != EMBED_DIM:
@@ -70,61 +62,35 @@ async def ingest_interview(
         transcript_len=len(scrubbed_transcript),
     )
 
-    # 2. Generate vector embedding (skipped if no MISTRAL_API_KEY)
+    # 2. Generate vector embedding of scrubbed text
     embedding = await _generate_embedding(scrubbed_transcript)
-    embed_dim = len(embedding) if embedding else 0
-    log.info("ingestion.embedded", dim=embed_dim, skipped=embedding is None)
+    log.info("ingestion.embedded", dim=len(embedding))
 
     # 3. Insert into `interviews` table (Prisma-managed, pgvector column)
     interview_id = uuid.uuid4()
-
-    if embedding is not None:
-        await session.exec(  # type: ignore[call-overload]
-            text("""
-                INSERT INTO interviews (
-                    id, organization_id, data_source_id, source_ref,
-                    contact_name, transcript, language, embedding,
-                    created_at, updated_at
-                ) VALUES (
-                    :id, :org_id, :ds_id, :source_ref,
-                    :contact, :transcript, :lang, :embedding::vector,
-                    NOW(), NOW()
-                )
-            """),
-            params={
-                "id": interview_id,
-                "org_id": uuid.UUID(organization_id),
-                "ds_id": uuid.UUID(data_source_id) if data_source_id else None,
-                "source_ref": source_ref,
-                "contact": scrubbed_contact,
-                "transcript": scrubbed_transcript,
-                "lang": language,
-                "embedding": str(embedding),
-            },
-        )
-    else:
-        await session.exec(  # type: ignore[call-overload]
-            text("""
-                INSERT INTO interviews (
-                    id, organization_id, data_source_id, source_ref,
-                    contact_name, transcript, language,
-                    created_at, updated_at
-                ) VALUES (
-                    :id, :org_id, :ds_id, :source_ref,
-                    :contact, :transcript, :lang,
-                    NOW(), NOW()
-                )
-            """),
-            params={
-                "id": interview_id,
-                "org_id": uuid.UUID(organization_id),
-                "ds_id": uuid.UUID(data_source_id) if data_source_id else None,
-                "source_ref": source_ref,
-                "contact": scrubbed_contact,
-                "transcript": scrubbed_transcript,
-                "lang": language,
-            },
-        )
+    await session.exec(  # type: ignore[call-overload]
+        text("""
+            INSERT INTO interviews (
+                id, organization_id, data_source_id, source_ref,
+                contact_name, transcript, language, embedding,
+                created_at, updated_at
+            ) VALUES (
+                :id, :org_id, :ds_id, :source_ref,
+                :contact, :transcript, :lang, :embedding::vector,
+                NOW(), NOW()
+            )
+        """),
+        params={
+            "id": interview_id,
+            "org_id": uuid.UUID(organization_id),
+            "ds_id": uuid.UUID(data_source_id) if data_source_id else None,
+            "source_ref": source_ref,
+            "contact": scrubbed_contact,
+            "transcript": scrubbed_transcript,
+            "lang": language,
+            "embedding": str(embedding),
+        },
+    )
     await session.commit()
 
     log.info("ingestion.stored", interview_id=str(interview_id))
@@ -132,7 +98,7 @@ async def ingest_interview(
     return IngestResult(
         interview_id=interview_id,
         pii_entities_found=len(pii_results),
-        embedding_dim=embed_dim,
+        embedding_dim=len(embedding),
     )
 
 

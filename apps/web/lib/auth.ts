@@ -1,8 +1,6 @@
 /**
  * Auth helper — placeholder for WorkOS / Supabase Auth integration.
  * Returns the current session with organizationId for tenant-scoped queries.
- *
- * IMPORTANT: Dev stub IDs MUST match prisma/seed.ts deterministic IDs.
  */
 
 export interface Session {
@@ -14,8 +12,9 @@ export interface Session {
 
 export async function auth(): Promise<Session | null> {
   // TODO: Wire to WorkOS getSession() or Supabase auth.getUser()
+  // For development, return a stub session
   return {
-    userId: "00000000-0000-0000-0000-000000000002",
+    userId: "00000000-0000-0000-0000-000000000001",
     organizationId: "00000000-0000-0000-0000-000000000010",
     email: "dev@productos.app",
     role: "OWNER",

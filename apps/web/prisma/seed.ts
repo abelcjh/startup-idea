@@ -87,38 +87,29 @@ Priya: If it shows me the evidence and I can trace every claim back to a real us
   },
 ];
 
-// ─── Deterministic IDs (must match lib/auth.ts dev stub) ────────────────────
-
-const DEV_ORG_ID = "00000000-0000-0000-0000-000000000010";
-const DEV_USER_AUTH_ID = "00000000-0000-0000-0000-000000000001";
-const DEV_USER_ID = "00000000-0000-0000-0000-000000000002";
-const DEV_DATASOURCE_ID = "00000000-0000-0000-0000-000000000003";
-
 // ─── Seed function ──────────────────────────────────────────────────────────
 
 async function main() {
   console.log("🌱 Seeding ProductOS database...\n");
 
-  // 1. Organization (deterministic ID matches lib/auth.ts)
+  // 1. Organization
   const org = await prisma.organization.upsert({
     where: { slug: "acme-corp" },
     update: {},
     create: {
-      id: DEV_ORG_ID,
       name: "Acme Corp",
       slug: "acme-corp",
     },
   });
   console.log(`  ✓ Organization: ${org.name} (${org.id})`);
 
-  // 2. User (deterministic ID matches lib/auth.ts)
+  // 2. User
   const user = await prisma.user.upsert({
-    where: { auth_id: DEV_USER_AUTH_ID },
+    where: { auth_id: "00000000-0000-0000-0000-000000000001" },
     update: {},
     create: {
-      id: DEV_USER_ID,
       organization_id: org.id,
-      auth_id: DEV_USER_AUTH_ID,
+      auth_id: "00000000-0000-0000-0000-000000000001",
       email: "dev@productos.app",
       full_name: "Dev User",
       role: "OWNER",
@@ -128,10 +119,10 @@ async function main() {
 
   // 3. Data Source
   const zendesk = await prisma.dataSource.upsert({
-    where: { id: DEV_DATASOURCE_ID },
+    where: { id: "00000000-0000-0000-0000-ds0000000001" },
     update: {},
     create: {
-      id: DEV_DATASOURCE_ID,
+      id: "00000000-0000-0000-0000-ds0000000001",
       organization_id: org.id,
       provider: "ZENDESK",
       label: "Production Zendesk",

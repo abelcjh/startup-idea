@@ -1,3 +1,5 @@
+version: "3.9"
+
 services:
   # ── Supabase (PostgreSQL + pgvector) ──
   supabase-db:
@@ -16,7 +18,7 @@ services:
       retries: 10
 
   supabase-studio:
-    image: supabase/studio:latest
+    image: supabase/studio:20241216-37cb29d
     ports:
       - "54323:3000"
     environment:
