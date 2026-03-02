@@ -5,9 +5,9 @@ WORKDIR /srv
 RUN pip install --no-cache-dir uv
 
 COPY pyproject.toml ./
-RUN uv pip install --system --no-cache -r pyproject.toml
-
 COPY app/ app/
+# Install the project and its dependencies natively
+RUN uv pip install --system --no-cache .
 
 EXPOSE 8000
 

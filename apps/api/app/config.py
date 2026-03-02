@@ -28,6 +28,6 @@ class Settings(BaseSettings):
             self.database_url = url.replace("postgresql://", "postgresql+asyncpg://", 1)
         elif url.startswith("postgres://"):
             self.database_url = url.replace("postgres://", "postgresql+asyncpg://", 1)
-            return self
+        return self
 
 settings = Settings()

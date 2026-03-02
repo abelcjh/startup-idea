@@ -56,6 +56,18 @@ variable "redis_url" {
   sensitive   = true
 }
 
+variable "database_url" {
+  description = "PostgreSQL connection string"
+  type        = string
+  sensitive   = true
+}
+
+variable "mistral_api_key" {
+  description = "API key for Mistral LLM"
+  type        = string
+  sensitive   = true
+}
+
 # ── Provider ──
 
 provider "google" {
