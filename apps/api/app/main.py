@@ -1,3 +1,4 @@
+import asyncio
 from contextlib import asynccontextmanager
 from collections.abc import AsyncIterator
 
@@ -21,12 +22,36 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     if settings.sentry_dsn:
         sentry_sdk.init(dsn=settings.sentry_dsn, traces_sample_rate=0.1)
 
-    app.state.redis_pool = await create_pool(redis_settings)
+    # Enterprise-grade Redis connection with retry mechanism
+    max_retries = 5
+    retry_delay = 2  # seconds
+    
+    for attempt in range(max_retries):
+        try:
+            app.state.redis_pool = await create_pool(redis_settings)
+            logger.info("redis.connected", attempt=attempt + 1)
+            break
+        except Exception as e:
+            logger.warning(
+                "redis.connection_failed", 
+                error=str(e), 
+                attempt=attempt + 1, 
+                max_retries=max_retries
+            )
+            if attempt == max_retries - 1:
+                logger.error("redis.connection_fatal", error="Could not connect to Redis after multiple attempts.")
+                # Raise the exception to fail the container health check
+                raise e
+            await asyncio.sleep(retry_delay)
+
     logger.info("startup", version=settings.app_version)
 
     yield
 
-    await app.state.redis_pool.close()
+    # Safely close the Redis pool on shutdown
+    if hasattr(app.state, "redis_pool") and app.state.redis_pool:
+        await app.state.redis_pool.close()
+        
     await dispose_engine()
     logger.info("shutdown")
 

@@ -14,8 +14,8 @@ env:
   GCP_REGION: asia-southeast1
 
 jobs:
-  deploy-api:
-    name: Deploy API to Cloud Run
+  deploy-services:
+    name: Deploy API and Worker to Cloud Run
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/main'
     permissions:
@@ -37,11 +37,20 @@ jobs:
           gcloud builds submit apps/api \
             --tag "${{ env.GCP_REGION }}-docker.pkg.dev/${{ env.GCP_PROJECT_ID }}/product-os/api:${{ github.sha }}"
 
-      - name: Deploy to Cloud Run
+      - name: Deploy API to Cloud Run
         run: |
           gcloud run deploy product-os-api \
             --image "${{ env.GCP_REGION }}-docker.pkg.dev/${{ env.GCP_PROJECT_ID }}/product-os/api:${{ github.sha }}" \
             --region ${{ env.GCP_REGION }} \
             --platform managed \
             --allow-unauthenticated \
-            --set-env-vars "SENTRY_DSN=${{ secrets.SENTRY_DSN }}"
+            --update-env-vars "SENTRY_DSN=${{ secrets.SENTRY_DSN }}"
+
+      - name: Deploy Worker to Cloud Run
+        run: |
+          gcloud run deploy product-os-worker \
+            --image "${{ env.GCP_REGION }}-docker.pkg.dev/${{ env.GCP_PROJECT_ID }}/product-os/api:${{ github.sha }}" \
+            --region ${{ env.GCP_REGION }} \
+            --platform managed \
+            --no-allow-unauthenticated \
+            --update-env-vars "SENTRY_DSN=${{ secrets.SENTRY_DSN }}"

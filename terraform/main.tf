@@ -114,12 +114,47 @@ resource "google_cloud_run_v2_service" "api" {
         name  = "SENTRY_DSN"
         value = var.sentry_dsn
       }
+      env {
+        name  = "DATABASE_URL"
+        value = var.database_url
+      }
+      env{
+        name = "MISTRAL_API_KEY"
+        value = var.mistral_api_key
+      }
     }
   }
 
   traffic {
     percent = 100
     type    = "TRAFFIC_TARGET_ALLOCATION_TYPE_LATEST"
+  }
+}
+
+resource "google_cloud_run_v2_service" "worker" {
+  name     = "product-os-worker"
+  location = var.region
+
+  template {
+    containers {
+      image = var.api_image
+      # Override the default FastAPI command to start the Arq worker
+      command = ["arq", "app.worker.WorkerSettings"]
+      
+      env {
+        name  = "DATABASE_URL"
+        value = var.database_url
+      }
+      env{
+        name = "MISTRAL_API_KEY"
+        value = var.mistral_api_key
+      }
+      env {
+        name  = "REDIS_URL"
+        value = var.redis_url
+      }
+      # ... include LLM keys and other env vars here
+    }
   }
 }
 

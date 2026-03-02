@@ -1,4 +1,5 @@
 from pydantic_settings import BaseSettings
+from pydantic import model_validator
 
 
 class Settings(BaseSettings):
@@ -19,5 +20,14 @@ class Settings(BaseSettings):
 
     model_config = {"env_file": ".env", "env_file_encoding": "utf-8"}
 
+    @model_validator(mode="after")
+    def _fix_database_url(self) -> "Settings":
+        """Ensure the asyncpg driver prefix is present for SQLAlchemy."""
+        url = self.database_url
+        if url.startswith("postgresql://"):
+            self.database_url = url.replace("postgresql://", "postgresql+asyncpg://", 1)
+        elif url.startswith("postgres://"):
+            self.database_url = url.replace("postgres://", "postgresql+asyncpg://", 1)
+            return self
 
 settings = Settings()
