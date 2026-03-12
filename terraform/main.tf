@@ -154,18 +154,29 @@ resource "google_cloud_run_v2_service" "worker" {
       command = ["arq", "app.worker.WorkerSettings"]
       
       env {
+        name  = "SUPABASE_URL"
+        value = var.supabase_url
+      }
+      env {
+        name  = "SUPABASE_SERVICE_ROLE_KEY"
+        value = var.supabase_service_role_key
+      }
+      env {
         name  = "DATABASE_URL"
         value = var.database_url
       }
-      env{
-        name = "MISTRAL_API_KEY"
+      env {
+        name  = "MISTRAL_API_KEY"
         value = var.mistral_api_key
       }
       env {
         name  = "REDIS_URL"
         value = var.redis_url
       }
-      # ... include LLM keys and other env vars here
+      env {
+        name  = "SENTRY_DSN"
+        value = var.sentry_dsn
+      }
     }
   }
 }

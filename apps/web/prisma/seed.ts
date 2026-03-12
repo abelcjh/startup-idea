@@ -119,10 +119,10 @@ async function main() {
 
   // 3. Data Source
   const zendesk = await prisma.dataSource.upsert({
-    where: { id: "00000000-0000-0000-0000-ds0000000001" },
+    where: { id: "00000000-0000-0000-0000-000000000001" },
     update: {},
     create: {
-      id: "00000000-0000-0000-0000-ds0000000001",
+      id: "00000000-0000-0000-0000-000000000001",
       organization_id: org.id,
       provider: "ZENDESK",
       label: "Production Zendesk",
