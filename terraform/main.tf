@@ -39,13 +39,13 @@ variable "sentry_dsn" {
   sensitive   = true
 }
 
-variable "supabase_url" {
-  description = "Supabase project URL"
+variable "database_url" {
+  description = "Supabase project URL (API base URL)"
   type        = string
 }
 
-variable "supabase_service_role_key" {
-  description = "Supabase service-role key"
+variable "supabase_secret_key" {
+  description = "Supabase service-role (secret) key"
   type        = string
   sensitive   = true
 }
@@ -56,7 +56,7 @@ variable "redis_url" {
   sensitive   = true
 }
 
-variable "database_url" {
+variable "direct_url" {
   description = "PostgreSQL connection string"
   type        = string
   sensitive   = true
@@ -111,12 +111,16 @@ resource "google_cloud_run_v2_service" "api" {
       }
 
       env {
-        name  = "SUPABASE_URL"
-        value = var.supabase_url
+        name  = "DATABASE_URL"
+        value = var.database_url
       }
       env {
-        name  = "SUPABASE_SERVICE_ROLE_KEY"
-        value = var.supabase_service_role_key
+        name  = "DIRECT_URL"
+        value = var.direct_url
+      }
+      env {
+        name  = "SUPABASE_SECRET_KEY"
+        value = var.supabase_secret_key
       }
       env {
         name  = "REDIS_URL"
@@ -154,16 +158,12 @@ resource "google_cloud_run_v2_service" "worker" {
       command = ["arq", "app.worker.WorkerSettings"]
       
       env {
-        name  = "SUPABASE_URL"
-        value = var.supabase_url
+        name  = "SUPABASE_SECRET_KEY"
+        value = var.supabase_secret_key
       }
       env {
-        name  = "SUPABASE_SERVICE_ROLE_KEY"
-        value = var.supabase_service_role_key
-      }
-      env {
-        name  = "DATABASE_URL"
-        value = var.database_url
+        name  = "DIRECT_URL"
+        value = var.direct_url
       }
       env {
         name  = "MISTRAL_API_KEY"

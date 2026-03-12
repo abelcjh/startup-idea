@@ -17,14 +17,17 @@ from app.db import get_session
 
 # ─── Redis / Arq ─────────────────────────────────────────────────────────────
 
-
 def _parse_redis_url(url: str) -> RedisSettings:
     parsed = urlparse(url)
+    # Check if the scheme is 'rediss' to enable TLS/SSL
+    use_ssl = parsed.scheme == "rediss"
+    
     return RedisSettings(
         host=parsed.hostname or "localhost",
         port=parsed.port or 6379,
         password=parsed.password,
         database=int(parsed.path.lstrip("/") or 0),
+        ssl=use_ssl,  # Enable SSL if connecting to Upstash
     )
 
 

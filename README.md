@@ -38,18 +38,19 @@ ProductOS requires **PostgreSQL with pgvector**. Choose one:
    CREATE EXTENSION IF NOT EXISTS vector;
    CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
    ```
-3. In **Settings → API**: copy `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`.
-4. In **Settings → Database**:
-   - **Connection string (URI)** → use for `DATABASE_URL`
-   - **Connection string (URI, direct)** → use for `DIRECT_URL`
+3. In **Project Settings → API Keys**: copy `SUPABASE_PUBLISHABLE_KEY` (anon) and `SUPABASE_SECRET_KEY` (service role).
+
+4. In **Project Overview**:
+   - **Project URL** → use for `DATABASE_URL`
+   - **Connection string** (pooled or direct) → use for `DIRECT_URL`
 5. Put values in `.env.local` (step 2).
 
 **Path B — Local Docker (Supabase stack):**
 
 1. Start Docker Desktop.
 2. Run `pnpm docker:up` — starts Postgres (with pgvector), Redis, LiteLLM, Supabase Studio.
-3. `.env.local` uses `DATABASE_URL=postgresql://postgres:postgres@localhost:54322/postgres` and `DIRECT_URL` same value.
-4. Use demo JWTs from `docker/.env.example` for `SUPABASE_ANON_KEY` and `SUPABASE_SERVICE_ROLE_KEY`.
+3. `.env.local` uses `DIRECT_URL=postgresql://postgres:postgres@localhost:54322/postgres`.
+4. Use demo JWTs from `docker/.env.example` for `SUPABASE_PUBLISHABLE_KEY` and `SUPABASE_SECRET_KEY`.
 
 ### 2. Environment & install
 

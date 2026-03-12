@@ -19,6 +19,7 @@ __pycache__/
 .env.local
 .env.*.
 docker/.env
+apps/web/.env
 
 # IDE
 .vscode/
